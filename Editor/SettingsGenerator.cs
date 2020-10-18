@@ -1,3 +1,5 @@
+using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -26,6 +28,8 @@ namespace Popcron.Settings
             //dump the whole template into the builder
             fileContents.AppendLine("using UnityEngine;");
             fileContents.AppendLine("using System.IO;");
+            fileContents.AppendLine("using System.Collections.Generic;");
+            fileContents.AppendLine("using Newtonsoft.Json;");
             fileContents.AppendLine("");
             fileContents.Append("public class ");
             fileContents.AppendLine(TypeName);
@@ -47,19 +51,25 @@ namespace Popcron.Settings
             for (int i = 0; i < settings.properties.Length; i++)
             {
                 ref Property property = ref settings.properties[i];
+                string propertyType = property.type;
+                string defaultValue = property.defaultValue;
+
+                //default value is a json, so convert back
+                string json = JsonConvert.ToString(defaultValue);
+                defaultValue = $"({propertyType})JsonConvert.DeserializeObject({json}, typeof({propertyType}))";
 
                 string fieldString = fieldTemplate.Replace("{PropertyName}", property.name);
-                fieldString = fieldString.Replace("{PropertyType}", property.type);
+                fieldString = fieldString.Replace("{PropertyType}", propertyType);
                 fieldString = fieldString.Replace("{Instance}", InstanceName);
-                fieldString = fieldString.Replace("{DefaultValue}", property.defaultValue);
+                fieldString = fieldString.Replace("{DefaultValue}", defaultValue);
                 fileContents.Append(fieldString);
 
                 fileContents.AppendLine();
 
                 string propertyString = propertyTemplate.Replace("{PropertyName}", property.name);
-                propertyString = propertyString.Replace("{PropertyType}", property.type);
+                propertyString = propertyString.Replace("{PropertyType}", propertyType);
                 propertyString = propertyString.Replace("{Instance}", InstanceName);
-                propertyString = propertyString.Replace("{DefaultValue}", property.defaultValue);
+                propertyString = propertyString.Replace("{DefaultValue}", defaultValue);
                 fileContents.Append(propertyString);
 
                 if (i != settings.properties.Length - 1)

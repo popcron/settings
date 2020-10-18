@@ -1,5 +1,6 @@
+using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,40 +9,42 @@ namespace Popcron.Settings
     [CustomPropertyDrawer(typeof(Property))]
     public class SettingsPropertyDrawer : PropertyDrawer
     {
-        private static List<Type> settingsTypes = null;
         private static string[] displayOptions = null;
+        private static FieldInfo[] supportedFields = null;
+        private static SerializedObject[] supportedTypesObjects = null;
 
         private static void FindAllTypes()
         {
-            List<string> displayOptions = new List<string>();
-            settingsTypes = new List<Type>();
-
-            void Add(Type newType, string displayName = null)
+            //add types from the supported types class
+            supportedFields = typeof(SupportedTypes).GetFields();
+            displayOptions = new string[supportedFields.Length];
+            supportedTypesObjects = new SerializedObject[supportedFields.Length];
+            for (int i = 0; i < displayOptions.Length; i++)
             {
-                displayOptions.Add(displayName ?? newType.Name);
-                settingsTypes.Add(newType);
+                SupportedTypes supportedTypes = ScriptableObject.CreateInstance<SupportedTypes>();
+                supportedTypesObjects[i] = new SerializedObject(supportedTypes);
+                displayOptions[i] = supportedFields[i].FieldType.Name;
+            }
+        }
+
+        private FieldInfo GetField(SerializedProperty typeProperty)
+        {
+            int selectedIndex = 0;
+            for (int i = 0; i < supportedFields.Length; i++)
+            {
+                if (supportedFields[i].FieldType.FullName == typeProperty.stringValue)
+                {
+                    selectedIndex = i;
+                    break;
+                }
             }
 
-            //add primitives
-            Add(typeof(string), "string");
-            Add(typeof(byte), "byte");
-            Add(typeof(sbyte), "sbyte");
-            Add(typeof(short), "short");
-            Add(typeof(ushort), "ushort");
-            Add(typeof(int), "int");
-            Add(typeof(uint), "uint");
-            Add(typeof(long), "long");
-            Add(typeof(float), "float");
-            Add(typeof(double), "double");
-            Add(typeof(bool), "bool");
-            Add(typeof(char), "char");
-
-            SettingsPropertyDrawer.displayOptions = displayOptions.ToArray();
+            return supportedFields[selectedIndex];
         }
 
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            if (settingsTypes == null || displayOptions == null)
+            if (supportedFields == null || displayOptions == null)
             {
                 FindAllTypes();
             }
@@ -58,19 +61,77 @@ namespace Popcron.Settings
                 EditorGUI.PropertyField(position, name, new GUIContent("Name"));
 
                 position.y += 20;
-                Type systemType = ShowTypeEnum(position, type);
+                FieldInfo fieldInfo = ShowTypeEnum(position, type);
 
                 position.y += 20;
-                ShowDefaultValue(position, systemType, value);
+                ShowDefaultValue(position, fieldInfo, value);
+
+                SettingsInspector.propertyIndex++;
             }
         }
 
-        private Type ShowTypeEnum(Rect position, SerializedProperty type)
+        private SerializedProperty GetProperty(FieldInfo fieldInfo)
+        {
+            //grab a serialized object based on this field index
+            SerializedObject supportedTypesObject = supportedTypesObjects[SettingsInspector.propertyIndex];
+            SerializedProperty next = supportedTypesObject.FindProperty("first").Copy();
+            next.Next(false);
+            int index = 0;
+            while (true)
+            {
+                if (supportedFields[index] == fieldInfo)
+                {
+                    return next.Copy();
+                }
+
+                index++;
+                if (index == supportedFields.Length)
+                {
+                    break;
+                }
+                else
+                {
+                    next.NextVisible(false);
+                }
+            }
+
+            return null;
+        }
+
+        private float GetHeight(FieldInfo fieldInfo)
+        {
+            //grab a serialized object based on this field index
+            SerializedObject supportedTypesObject = supportedTypesObjects[0];
+            SerializedProperty next = supportedTypesObject.FindProperty("first").Copy();
+            next.Next(false);
+            int index = 0;
+            while (true)
+            {
+                if (supportedFields[index] == fieldInfo)
+                {
+                    return EditorGUI.GetPropertyHeight(next);
+                }
+
+                index++;
+                if (index == supportedFields.Length)
+                {
+                    break;
+                }
+                else
+                {
+                    next.NextVisible(false);
+                }
+            }
+
+            return 0f;
+        }
+
+        private FieldInfo ShowTypeEnum(Rect position, SerializedProperty typeProperty)
         {
             int selectedIndex = 0;
-            for (int i = 0; i < settingsTypes.Count; i++)
+            for (int i = 0; i < supportedFields.Length; i++)
             {
-                if (settingsTypes[i].FullName == type.stringValue)
+                if (supportedFields[i].FieldType.FullName == typeProperty.stringValue)
                 {
                     selectedIndex = i;
                     break;
@@ -80,119 +141,69 @@ namespace Popcron.Settings
             int newIndex = EditorGUI.Popup(position, "Type", selectedIndex, displayOptions);
             if (newIndex != selectedIndex)
             {
-                type.stringValue = settingsTypes[newIndex].FullName;
+                Type systemType = supportedFields[newIndex].FieldType;
+                typeProperty.stringValue = systemType.FullName;
             }
 
-            return settingsTypes[newIndex];
+            return supportedFields[newIndex];
         }
 
-        private void ShowDefaultValue(Rect position, Type systemType, SerializedProperty value)
+        private void ShowDefaultValue(Rect position, FieldInfo fieldInfo, SerializedProperty value)
         {
-            GUIContent label = new GUIContent("Default");
-            if (systemType == typeof(string))
-            {
-                value.stringValue = EditorGUI.TextField(position, label, value.stringValue);
-            }
-            else if (systemType == typeof(byte))
-            {
-                if (!byte.TryParse(value.stringValue, out byte byteValue))
-                {
-                    byteValue = 0;
-                }
+            SerializedProperty property = GetProperty(fieldInfo);
+            SupportedTypes targetObject = (SupportedTypes)property.serializedObject.targetObject;
+            FieldInfo originalField = targetObject.GetType().GetField(property.name);
 
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, byteValue), byte.MinValue, byte.MaxValue).ToString();
-            }
-            else if (systemType == typeof(sbyte))
-            {
-                if (!sbyte.TryParse(value.stringValue, out sbyte sbyteValue))
-                {
-                    sbyteValue = 0;
-                }
+            //load from json
+            object objectValue = JsonConvert.DeserializeObject(value.stringValue, originalField.FieldType);
+            originalField.SetValue(targetObject, objectValue);
+            property.serializedObject.Update();
 
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, sbyteValue), sbyte.MinValue, sbyte.MaxValue).ToString();
-            }
-            else if (systemType == typeof(short))
-            {
-                if (!short.TryParse(value.stringValue, out short shortValue))
-                {
-                    shortValue = 0;
-                }
+            //show property
+            EditorGUI.PropertyField(position, property, new GUIContent("Default"));
+            property.serializedObject.ApplyModifiedProperties();
 
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, shortValue), short.MinValue, short.MaxValue).ToString();
-            }
-            else if (systemType == typeof(ushort))
-            {
-                if (!ushort.TryParse(value.stringValue, out ushort ushortValue))
-                {
-                    ushortValue = 0;
-                }
-
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, ushortValue), ushort.MinValue, ushort.MaxValue).ToString();
-            }
-            else if (systemType == typeof(int))
-            {
-                if (!int.TryParse(value.stringValue, out int intValue))
-                {
-                    intValue = 0;
-                }
-
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, intValue), int.MinValue, int.MaxValue).ToString();
-            }
-            else if (systemType == typeof(uint))
-            {
-                if (!uint.TryParse(value.stringValue, out uint uintValue))
-                {
-                    uintValue = 0;
-                }
-
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, uintValue), uint.MinValue, uint.MaxValue).ToString();
-            }
-            else if (systemType == typeof(long))
-            {
-                if (!long.TryParse(value.stringValue, out long longValue))
-                {
-                    longValue = 0;
-                }
-
-                value.stringValue = Mathf.Clamp(EditorGUI.LongField(position, label, longValue), long.MinValue, long.MaxValue).ToString();
-            }
-            else if (systemType == typeof(float))
-            {
-                if (!float.TryParse(value.stringValue, out float floatValue))
-                {
-                    floatValue = 0;
-                }
-
-                value.stringValue = EditorGUI.FloatField(position, label, floatValue).ToString() + "f";
-            }
-            else if (systemType == typeof(double))
-            {
-                if (!double.TryParse(value.stringValue, out double doubleValue))
-                {
-                    doubleValue = 0;
-                }
-
-                value.stringValue = EditorGUI.DoubleField(position, label, doubleValue).ToString() + "d";
-            }
-            else if (systemType == typeof(bool))
-            {
-                value.stringValue = EditorGUI.Toggle(position, label, value.stringValue.Equals("true", StringComparison.OrdinalIgnoreCase)).ToString().ToLower();
-            }
-            else
-            {
-                value.stringValue = EditorGUI.TextField(position, label, value.stringValue);
-            }
+            //save to json
+            objectValue = originalField.GetValue(targetObject);
+            value.stringValue = JsonConvert.SerializeObject(objectValue);
+            value.serializedObject.ApplyModifiedProperties();
         }
 
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
-            float height = base.GetPropertyHeight(property, label);
             if (property.isExpanded)
             {
-                height = 80;
+                float height = 20f * 3f;
+                SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
+                FieldInfo propertyType = GetField(typeProperty);
+                return height + GetHeight(propertyType);
             }
+            else
+            {
+                return 20f;
+            }
+        }
 
-            return height;
+        public class SupportedTypes : ScriptableObject
+        {
+            [SerializeField]
+            private byte first;
+
+            public byte byteValue;
+            public sbyte sbyteValue;
+            public short shortValue;
+            public ushort ushortValue;
+            public int intValue;
+            public uint uintValue;
+            public long longValue;
+            public bool boolValue;
+
+            public string stringValue;
+            public string[] stringListValue;
+
+            public char charValue;
+            public float floatValue;
+            public double doubleValue;
         }
     }
 }
