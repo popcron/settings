@@ -72,6 +72,6 @@ namespace Popcron.Settings
     {
         public string name;
         public string type;
-        public string value;
+        public string defaultValue;
     }
 }

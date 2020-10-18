@@ -51,6 +51,7 @@ namespace Popcron.Settings
                 string fieldString = fieldTemplate.Replace("{PropertyName}", property.name);
                 fieldString = fieldString.Replace("{PropertyType}", property.type);
                 fieldString = fieldString.Replace("{Instance}", InstanceName);
+                fieldString = fieldString.Replace("{DefaultValue}", property.defaultValue);
                 fileContents.Append(fieldString);
 
                 fileContents.AppendLine();
@@ -58,6 +59,7 @@ namespace Popcron.Settings
                 string propertyString = propertyTemplate.Replace("{PropertyName}", property.name);
                 propertyString = propertyString.Replace("{PropertyType}", property.type);
                 propertyString = propertyString.Replace("{Instance}", InstanceName);
+                propertyString = propertyString.Replace("{DefaultValue}", property.defaultValue);
                 fileContents.Append(propertyString);
 
                 if (i != settings.properties.Length - 1)
