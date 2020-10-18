@@ -28,6 +28,7 @@ namespace Popcron.Settings
         }
 
         public string pathToClass = "Assets/Settings.cs";
+        public TextAsset classTemplate;
         public Property[] properties = { };
 
         /// <summary>

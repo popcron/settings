@@ -1,0 +1,22 @@
+#region FIELD
+[SerializeField]
+private {PropertyType} field_{PropertyName};
+#endregion
+
+#region PROPERTY
+public static {PropertyType} {PropertyName}
+{
+    get
+    {
+        return {Instance}.field_{PropertyName};
+    }
+    set
+    {
+        if ({Instance}.field_{PropertyName} != value)
+        {
+            {Instance}.field_{PropertyName} = value;
+            Save();
+        }
+    }
+}
+#endregion
