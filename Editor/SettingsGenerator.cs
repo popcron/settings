@@ -52,6 +52,12 @@ namespace Popcron.Settings
             {
                 ref Property property = ref settings.properties[i];
                 string propertyType = property.type;
+                if (propertyType.EndsWith("[]"))
+                {
+                    //it array! so make it a list instead
+                    propertyType = $"List<{propertyType.TrimEnd('[', ']')}>";
+                }
+
                 string defaultValue = property.defaultValue;
 
                 //default value is a json, so convert back
