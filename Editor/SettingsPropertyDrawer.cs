@@ -10,8 +10,11 @@ namespace Popcron.Settings
     public class SettingsPropertyDrawer : PropertyDrawer
     {
         private const float Gap = 2f;
+        private const float IndentOffset = 18f;
+
         private static string[] displayOptions = null;
         private static FieldInfo[] surrogateFields = null;
+        private static JsonSerializerSettings jsonSettings = new JsonSerializerSettings();
 
         private static void FindAllTypes()
         {
@@ -53,12 +56,28 @@ namespace Popcron.Settings
             SupportedTypes supportedTypes = ScriptableObject.CreateInstance<SupportedTypes>();
             SerializedObject serializedTypes = new SerializedObject(supportedTypes);
             FieldInfo supportedTypeField = GetSurrogateField(typeProperty);
+            SurrogateType surrogateType = SurrogateType.Find(supportedTypeField.FieldType);
 
             //load from json into the correct field
             object objectValue = null;
             try
             {
-                objectValue = JsonConvert.DeserializeObject(defaultValueProperty.stringValue, supportedTypeField.FieldType);
+                if (surrogateType != null)
+                {
+                    //if the expectated type is an array, then make it so
+                    Type fakeType = surrogateType.FakeType;
+                    if (supportedTypeField.FieldType.IsArray)
+                    {
+                        fakeType = fakeType.MakeArrayType();
+                    }
+
+                    objectValue = JsonConvert.DeserializeObject(defaultValueProperty.stringValue, fakeType);
+                    objectValue = surrogateType.ConvertIntoReal(objectValue);
+                }
+                else
+                {
+                    objectValue = JsonConvert.DeserializeObject(defaultValueProperty.stringValue, supportedTypeField.FieldType);
+                }
             }
             catch
             {
@@ -66,6 +85,10 @@ namespace Popcron.Settings
                 if (supportedTypeField.FieldType.IsValueType)
                 {
                     objectValue = Activator.CreateInstance(supportedTypeField.FieldType);
+                }
+                else
+                {
+                    objectValue = null;
                 }
             }
 
@@ -97,6 +120,9 @@ namespace Popcron.Settings
             property.isExpanded = EditorGUI.Foldout(position, property.isExpanded, new GUIContent($"{nameProperty.stringValue} ({typeProperty.stringValue})"), true);
             if (property.isExpanded)
             {
+                position.x += IndentOffset;
+                position.width -= IndentOffset;
+
                 position.y += EditorGUIUtility.singleLineHeight + Gap;
                 EditorGUI.PropertyField(position, nameProperty, new GUIContent("Name"));
 
@@ -174,10 +200,23 @@ namespace Popcron.Settings
             EditorGUI.PropertyField(position, surrogateProperty, new GUIContent("Default"));
             surrogateProperty.serializedObject.ApplyModifiedProperties();
 
+            jsonSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+
             //save to json by getting the value from suty
             //and then by writing back into the original property as a string
             object objectValue = surrogateField.GetValue(surrogateTypesObject.targetObject);
-            defaultValueProperty.stringValue = JsonConvert.SerializeObject(objectValue);
+
+            //find a surrogate type handler for this, cause json.net is annoying
+            if (objectValue != null)
+            {
+                SurrogateType surrogateType = SurrogateType.Find(surrogateField.FieldType);
+                if (surrogateType != null)
+                {
+                    objectValue = surrogateType.ConvertAwayFromReal(objectValue);
+                }
+            }
+
+            defaultValueProperty.stringValue = JsonConvert.SerializeObject(objectValue, jsonSettings);
             isExpandedProperty.boolValue = surrogateProperty.isExpanded;
             defaultValueProperty.serializedObject.ApplyModifiedProperties();
         }
@@ -201,48 +240,6 @@ namespace Popcron.Settings
             }
 
             return elementHeight + nameHeight + typeHeight + valueHeight;
-        }
-
-        public class SupportedTypes : ScriptableObject
-        {
-            [SerializeField]
-            private byte first;
-
-            public byte byteValue;
-            public byte[] byteArrayValue;
-
-            public sbyte sbyteValue;
-            public sbyte[] sbyteArrayValue;
-
-            public short shortValue;
-            public short[] shortArrayValue;
-
-            public ushort ushortValue;
-            public ushort[] ushortArrayValue;
-
-            public int intValue;
-            public int[] intArrayValue;
-
-            public uint uintValue;
-            public uint[] uintArrayValue;
-
-            public long longValue;
-            public long[] longArrayValue;
-
-            public bool boolValue;
-            public bool[] boolArrayValue;
-
-            public string stringValue;
-            public string[] stringListValue;
-
-            public char charValue;
-            public char[] charArrayValue;
-
-            public float floatValue;
-            public float[] floatArrayValue;
-
-            public double doubleValue;
-            public double[] doubleArrayValue;
         }
     }
 }

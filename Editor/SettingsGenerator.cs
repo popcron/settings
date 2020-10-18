@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using System;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -51,7 +52,8 @@ namespace Popcron.Settings
             {
                 ref Property property = ref settings.properties[i];
                 string propertyType = property.type;
-                if (propertyType.EndsWith("[]"))
+                bool isArray = propertyType.EndsWith("[]");
+                if (isArray)
                 {
                     //it array! so make it a list instead
                     propertyType = $"List<{propertyType.TrimEnd('[', ']')}>";
@@ -61,7 +63,22 @@ namespace Popcron.Settings
 
                 //default value is a json, so convert back
                 string json = JsonConvert.ToString(defaultValue);
-                defaultValue = $"({propertyType})JsonConvert.DeserializeObject({json}, typeof({propertyType}))";
+                SurrogateType handler = SurrogateType.Find(property.type);
+                if (handler != null)
+                {
+                    Type fakeType = handler.FakeType;
+                    if (isArray)
+                    {
+                        fakeType = fakeType.MakeArrayType();
+                    }
+
+                    object fakeValue = JsonConvert.DeserializeObject(defaultValue, fakeType);
+                    defaultValue = handler.GetLine(fakeValue);
+                }
+                else
+                {
+                    defaultValue = $"({propertyType})JsonConvert.DeserializeObject({json}, typeof({propertyType}))";
+                }
 
                 string fieldString = fieldTemplate.Replace("{PropertyName}", property.name);
                 fieldString = fieldString.Replace("{PropertyType}", propertyType);
