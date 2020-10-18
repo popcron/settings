@@ -73,5 +73,6 @@ namespace Popcron.Settings
         public string name;
         public string type;
         public string defaultValue;
+        public bool isExpanded;
     }
 }
