@@ -71,6 +71,7 @@ namespace Popcron.Settings
     public class Property
     {
         public string name;
+        public string description;
         public string type;
         public string defaultValue;
         public bool isExpanded;

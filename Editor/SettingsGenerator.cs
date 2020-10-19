@@ -29,7 +29,6 @@ namespace Popcron.Settings
             fileContents.AppendLine("using UnityEngine;");
             fileContents.AppendLine("using System.IO;");
             fileContents.AppendLine("using System.Collections.Generic;");
-            fileContents.AppendLine("using Newtonsoft.Json;");
             fileContents.AppendLine("");
             fileContents.Append("public class ");
             fileContents.AppendLine(TypeName);
@@ -52,6 +51,7 @@ namespace Popcron.Settings
             {
                 ref Property property = ref settings.properties[i];
                 string propertyType = property.type;
+                string description = property.description;
                 bool isArray = propertyType.EndsWith("[]");
                 if (isArray)
                 {
@@ -81,15 +81,30 @@ namespace Popcron.Settings
                     defaultValue = $"({propertyType})JsonConvert.DeserializeObject({json}, typeof({propertyType}))";
                 }
 
-                string fieldString = fieldTemplate.Replace("{PropertyName}", property.name);
+                string fieldName = ToFieldName(property.name);
+                string fieldString = fieldTemplate.Replace("{FieldName}", fieldName);
+                fieldString = fieldString.Replace("{PropertyName}", property.name);
                 fieldString = fieldString.Replace("{PropertyType}", propertyType);
                 fieldString = fieldString.Replace("{Instance}", InstanceName);
                 fieldString = fieldString.Replace("{DefaultValue}", defaultValue);
                 fileContents.Append(fieldString);
 
                 fileContents.AppendLine();
+                fileContents.AppendLine();
 
-                string propertyString = propertyTemplate.Replace("{PropertyName}", property.name);
+                //add the xml comment
+                if (!string.IsNullOrEmpty(description))
+                {
+                    fileContents.Append(Indent);
+                    fileContents.AppendLine("/// <summary>");
+                    fileContents.Append(Indent);
+                    fileContents.AppendLine($"/// {description}");
+                    fileContents.Append(Indent);
+                    fileContents.AppendLine("/// </summary>");
+                }
+
+                string propertyString = propertyTemplate.Replace("{FieldName}", fieldName);
+                propertyString = propertyString.Replace("{PropertyName}", property.name);
                 propertyString = propertyString.Replace("{PropertyType}", propertyType);
                 propertyString = propertyString.Replace("{Instance}", InstanceName);
                 propertyString = propertyString.Replace("{DefaultValue}", defaultValue);
@@ -97,6 +112,7 @@ namespace Popcron.Settings
 
                 if (i != settings.properties.Length - 1)
                 {
+                    fileContents.AppendLine();
                     fileContents.AppendLine();
                 }
             }
@@ -107,6 +123,35 @@ namespace Popcron.Settings
             AssetDatabase.Refresh();
         }
 
+        /// <summary>
+        /// Converts this to a better field name.
+        /// </summary>
+        private static string ToFieldName(string propertyName)
+        {
+            char firstChar = propertyName[0];
+            if (char.IsUpper(firstChar))
+            {
+                //is second char also upper?
+                if (!char.IsUpper(propertyName[1]))
+                {
+                    firstChar = char.ToLower(firstChar);
+                    propertyName = propertyName.Remove(0, 1);
+                    propertyName = firstChar + propertyName;
+                    return propertyName;
+                }
+                else
+                {
+                    //more uppercases, default out
+                }
+            }
+
+            //add the fugly m_ prefix
+            return $"m_{propertyName}";
+        }
+
+        /// <summary>
+        /// Creates a static FilePath property.
+        /// </summary>
         private static void CreatePathProperty(StringBuilder fileContents)
         {
             //property sig
@@ -265,7 +310,7 @@ namespace Popcron.Settings
                 }
             }
 
-            return template.Substring(start, end - start).TrimEnd('\n').TrimStart('\n');
+            return template.Substring(start, end - start).TrimEnd('\n', '\r').TrimStart('\n', '\r');
         }
     }
 }

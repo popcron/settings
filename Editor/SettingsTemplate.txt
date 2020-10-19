@@ -1,20 +1,17 @@
 #region FIELD
 [SerializeField]
-private {PropertyType} _{PropertyName} = {DefaultValue};
+private {PropertyType} {FieldName} = {DefaultValue};
 #endregion
 
 #region PROPERTY
 public static {PropertyType} {PropertyName}
 {
-    get
-    {
-        return {Instance}._{PropertyName};
-    }
+    get => {Instance}.{FieldName};
     set
     {
-        if ({Instance}._{PropertyName} != value)
+        if ({Instance}.{FieldName} != value)
         {
-            {Instance}._{PropertyName} = value;
+            {Instance}.{FieldName} = value;
             Save();
         }
     }

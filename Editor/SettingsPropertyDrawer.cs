@@ -114,6 +114,7 @@ namespace Popcron.Settings
             }
 
             SerializedProperty nameProperty = property.FindPropertyRelative(nameof(Property.name));
+            SerializedProperty descriptionProperty = property.FindPropertyRelative(nameof(Property.description));
             SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
 
             position.height = EditorGUIUtility.singleLineHeight;
@@ -125,6 +126,9 @@ namespace Popcron.Settings
 
                 position.y += EditorGUIUtility.singleLineHeight + Gap;
                 EditorGUI.PropertyField(position, nameProperty, new GUIContent("Name"));
+
+                position.y += EditorGUIUtility.singleLineHeight + Gap;
+                EditorGUI.PropertyField(position, descriptionProperty, new GUIContent("Description"));
 
                 position.y += EditorGUIUtility.singleLineHeight + Gap;
                 FieldInfo fieldInfo = ShowTypeEnum(position, typeProperty);
@@ -225,11 +229,13 @@ namespace Popcron.Settings
         {
             float elementHeight = EditorGUIUtility.singleLineHeight + Gap;
             float nameHeight = 0;
+            float descriptionHeight = 0;
             float typeHeight = 0;
             float valueHeight = 0;
             if (property.isExpanded)
             {
                 nameHeight = EditorGUIUtility.singleLineHeight + Gap;
+                descriptionHeight = EditorGUIUtility.singleLineHeight + Gap;
                 typeHeight = EditorGUIUtility.singleLineHeight + Gap;
 
                 SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
@@ -239,7 +245,7 @@ namespace Popcron.Settings
                 valueHeight = EditorGUI.GetPropertyHeight(propertyType, true) + Gap;
             }
 
-            return elementHeight + nameHeight + typeHeight + valueHeight;
+            return elementHeight + nameHeight + descriptionHeight + typeHeight + valueHeight;
         }
     }
 }
