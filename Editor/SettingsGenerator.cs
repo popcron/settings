@@ -63,7 +63,7 @@ namespace Popcron.Settings
 
                 //default value is a json, so convert back
                 string json = JsonConvert.ToString(defaultValue);
-                SurrogateType handler = SurrogateType.Find(property.type);
+                TypeHandler handler = TypeHandler.Find(property.type);
                 if (handler != null)
                 {
                     Type fakeType = handler.FakeType;
@@ -74,6 +74,7 @@ namespace Popcron.Settings
 
                     object fakeValue = JsonConvert.DeserializeObject(defaultValue, fakeType);
                     defaultValue = handler.GetLine(fakeValue);
+                    propertyType = handler.GetTypeName(isArray);
                 }
                 else
                 {

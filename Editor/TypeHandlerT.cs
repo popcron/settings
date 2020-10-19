@@ -1,72 +1,25 @@
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace Popcron.Settings
 {
-    public abstract class SurrogateType
+    public abstract class TypeHandler<R, F> : TypeHandler
     {
-        private static Dictionary<string, SurrogateType> realTypeToSurrogate = null;
-
-        public abstract Type RealType { get; }
-        public abstract Type FakeType { get; }
-        public abstract object ConvertAwayFromReal(object real);
-        public abstract object ConvertIntoReal(object fake);
-        public abstract string GetLine(object fake);
-
-        public static SurrogateType Find(string realType)
+        public sealed override string GetTypeName(bool isCollection)
         {
-            if (realTypeToSurrogate == null)
+            string typeName = DeclaredTypeName;
+            if (isCollection)
             {
-                Type[] types = typeof(SurrogateType).Assembly.GetTypes();
-                realTypeToSurrogate = new Dictionary<string, SurrogateType>();
-                for (int i = 0; i < types.Length; i++)
-                {
-                    Type type = types[i];
-                    if (!type.IsAbstract)
-                    {
-                        if (typeof(SurrogateType).IsAssignableFrom(type))
-                        {
-                            SurrogateType newSurrogate = (SurrogateType)Activator.CreateInstance(type);
-                            realTypeToSurrogate[newSurrogate.RealType.FullName] = newSurrogate;
-                        }
-                    }
-                }
+                return $"List<{typeName}>";
             }
-
-            //remove the array brackets
-            if (realType.EndsWith("[]"))
+            else
             {
-                realType = realType.Substring(0, realType.Length - 2);
+                return typeName;
             }
-
-            if (realTypeToSurrogate.TryGetValue(realType, out SurrogateType handler))
-            {
-                return handler;
-            }
-
-            return null;
         }
 
-        public static SurrogateType Find(Type realType)
-        {
-            if (realType == null)
-            {
-                return null;
-            }
+        public virtual string DeclaredTypeName => RealType.FullName;
 
-            if (realType.IsArray)
-            {
-                realType = realType.GetElementType();
-            }
-
-            return Find(realType.FullName);
-        }
-    }
-
-    public abstract class SurrogateType<R, F> : SurrogateType
-    {
         public sealed override object ConvertAwayFromReal(object real)
         {
             if (real == null)
@@ -126,7 +79,7 @@ namespace Popcron.Settings
             {
                 StringBuilder builder = new StringBuilder();
                 builder.Append("new List<");
-                builder.Append(RealType.FullName);
+                builder.Append(DeclaredTypeName);
                 builder.AppendLine(">()");
                 builder.AppendLine("    {");
 

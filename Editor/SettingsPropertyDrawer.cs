@@ -56,7 +56,7 @@ namespace Popcron.Settings
             SupportedTypes supportedTypes = ScriptableObject.CreateInstance<SupportedTypes>();
             SerializedObject serializedTypes = new SerializedObject(supportedTypes);
             FieldInfo supportedTypeField = GetSurrogateField(typeProperty);
-            SurrogateType surrogateType = SurrogateType.Find(supportedTypeField.FieldType);
+            TypeHandler surrogateType = TypeHandler.Find(supportedTypeField.FieldType);
 
             //load from json into the correct field
             object objectValue = null;
@@ -209,7 +209,7 @@ namespace Popcron.Settings
             //find a surrogate type handler for this, cause json.net is annoying
             if (objectValue != null)
             {
-                SurrogateType surrogateType = SurrogateType.Find(surrogateField.FieldType);
+                TypeHandler surrogateType = TypeHandler.Find(surrogateField.FieldType);
                 if (surrogateType != null)
                 {
                     objectValue = surrogateType.ConvertAwayFromReal(objectValue);
