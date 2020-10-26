@@ -213,7 +213,7 @@ namespace Popcron.Settings
             fileContents.Append(Indent);
             fileContents.AppendLine("if (File.Exists(FilePath))");
 
-            //open method
+            //open if statement
             fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.AppendLine("{");
@@ -232,16 +232,16 @@ namespace Popcron.Settings
             fileContents.Append(TypeName);
             fileContents.AppendLine(">(json);");
 
+            //close if statement
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("}");
+
             //save json data
             fileContents.AppendLine();
             fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.AppendLine("Save();");
-
-            //close method
-            fileContents.Append(Indent);
-            fileContents.Append(Indent);
-            fileContents.AppendLine("}");
 
             //close method
             fileContents.Append(Indent);
