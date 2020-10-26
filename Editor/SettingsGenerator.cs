@@ -232,6 +232,12 @@ namespace Popcron.Settings
             fileContents.Append(TypeName);
             fileContents.AppendLine(">(json);");
 
+            //save json data
+            fileContents.AppendLine();
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("Save();");
+
             //close method
             fileContents.Append(Indent);
             fileContents.Append(Indent);
