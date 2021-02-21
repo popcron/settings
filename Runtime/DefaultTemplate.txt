@@ -1,0 +1,26 @@
+#region FIELD
+public {PropertyType} {FieldName} = {DefaultValue};
+#endregion
+
+#region PROPERTY
+public static {PropertyType} {PropertyName}
+{
+    get
+    {
+        if ({Instance} is null)
+        {
+            {LoadMethod}();
+        }
+
+        return {Instance}.{FieldName};
+    }
+    set
+    {
+        if ({Instance}.{FieldName} != value)
+        {
+            {Instance}.{FieldName} = value;
+            {SaveMethod}();
+        }
+    }
+}
+#endregion

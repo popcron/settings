@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Popcron.Settings
 {
-    [CustomPropertyDrawer(typeof(Property))]
+    [CustomPropertyDrawer(typeof(SettingsProperty))]
     public class SettingsPropertyDrawer : PropertyDrawer
     {
         private const float Gap = 2f;
@@ -32,6 +32,11 @@ namespace Popcron.Settings
         /// </summary>
         private FieldInfo GetSurrogateField(SerializedProperty typeProperty)
         {
+            if (surrogateFields is null)
+            {
+                FindAllTypes();
+            }
+
             int selectedIndex = 0;
             for (int i = 0; i < surrogateFields.Length; i++)
             {
@@ -47,9 +52,9 @@ namespace Popcron.Settings
 
         private SerializedObject CreateSurrogateTypeObject(SerializedProperty property)
         {
-            SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
-            SerializedProperty defaultValueProperty = property.FindPropertyRelative(nameof(Property.defaultValue));
-            SerializedProperty isExpandedProperty = property.FindPropertyRelative(nameof(Property.isExpanded));
+            SerializedProperty typeProperty = property.FindPropertyRelative(nameof(SettingsProperty.type));
+            SerializedProperty defaultValueProperty = property.FindPropertyRelative(nameof(SettingsProperty.defaultValue));
+            SerializedProperty isExpandedProperty = property.FindPropertyRelative(nameof(SettingsProperty.isExpanded));
 
             //inefficient? i know
             //create the suty object
@@ -113,9 +118,9 @@ namespace Popcron.Settings
                 FindAllTypes();
             }
 
-            SerializedProperty nameProperty = property.FindPropertyRelative(nameof(Property.name));
-            SerializedProperty descriptionProperty = property.FindPropertyRelative(nameof(Property.description));
-            SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
+            SerializedProperty nameProperty = property.FindPropertyRelative(nameof(SettingsProperty.name));
+            SerializedProperty descriptionProperty = property.FindPropertyRelative(nameof(SettingsProperty.description));
+            SerializedProperty typeProperty = property.FindPropertyRelative(nameof(SettingsProperty.type));
 
             position.height = EditorGUIUtility.singleLineHeight;
             property.isExpanded = EditorGUI.Foldout(position, property.isExpanded, new GUIContent($"{nameProperty.stringValue} ({typeProperty.stringValue})"), true);
@@ -196,8 +201,8 @@ namespace Popcron.Settings
 
         private void ShowDefaultValue(Rect position, FieldInfo surrogateField, SerializedProperty property, SerializedObject surrogateTypesObject)
         {
-            SerializedProperty defaultValueProperty = property.FindPropertyRelative(nameof(Property.defaultValue));
-            SerializedProperty isExpandedProperty = property.FindPropertyRelative(nameof(Property.isExpanded));
+            SerializedProperty defaultValueProperty = property.FindPropertyRelative(nameof(SettingsProperty.defaultValue));
+            SerializedProperty isExpandedProperty = property.FindPropertyRelative(nameof(SettingsProperty.isExpanded));
             SerializedProperty surrogateProperty = GetSurrogateProperty(surrogateField, surrogateTypesObject);
 
             //show property
@@ -238,7 +243,7 @@ namespace Popcron.Settings
                 descriptionHeight = EditorGUIUtility.singleLineHeight + Gap;
                 typeHeight = EditorGUIUtility.singleLineHeight + Gap;
 
-                SerializedProperty typeProperty = property.FindPropertyRelative(nameof(Property.type));
+                SerializedProperty typeProperty = property.FindPropertyRelative(nameof(SettingsProperty.type));
                 SerializedObject surrogateTypesObject = CreateSurrogateTypeObject(property);
                 FieldInfo surrogateFieldInfo = GetSurrogateField(typeProperty);
                 SerializedProperty propertyType = GetSurrogateProperty(surrogateFieldInfo, surrogateTypesObject);

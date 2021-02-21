@@ -12,16 +12,20 @@ namespace Popcron.Settings
             SerializedProperty classTemplate = serializedObject.FindProperty("classTemplate");
             SerializedProperty properties = serializedObject.FindProperty("properties");
 
-            EditorGUILayout.PropertyField(pathToClass, new GUIContent("Path to Class File"));
-            EditorGUILayout.PropertyField(classTemplate);
-            EditorGUILayout.PropertyField(properties, true);
-
-            if (GUILayout.Button("Generate"))
+            try
             {
-                SettingsGenerator.GenerateClass();
-            }
+                EditorGUILayout.PropertyField(pathToClass, new GUIContent("Path to Class File"));
+                EditorGUILayout.PropertyField(classTemplate);
+                EditorGUILayout.PropertyField(properties, true);
 
-            serializedObject.ApplyModifiedProperties();
+                if (GUILayout.Button("Generate"))
+                {
+                    SettingsGenerator.GenerateClass();
+                }
+
+                serializedObject.ApplyModifiedProperties();
+            }
+            catch { }
         }
 
         public override void OnInspectorGUI()

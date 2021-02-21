@@ -12,6 +12,8 @@ namespace Popcron.Settings
         private const string Indent = "    ";
         private const string InstanceName = "current";
         private const string TypeName = "Settings";
+        private const string SaveMethodName = "Save";
+        private const string LoadMethodName = "Load";
         private const bool PrettyPrint = true;
 
         public static void GenerateClass()
@@ -28,7 +30,13 @@ namespace Popcron.Settings
             //dump the whole template into the builder
             fileContents.AppendLine("using UnityEngine;");
             fileContents.AppendLine("using System.IO;");
-            fileContents.AppendLine("using System.Collections.Generic;");
+
+            //add if collections are present
+            if (NeedsGenericCollections(settings))
+            {
+                fileContents.AppendLine("using System.Collections.Generic;");
+            }
+
             fileContents.AppendLine("");
             fileContents.Append("public class ");
             fileContents.AppendLine(TypeName);
@@ -43,13 +51,16 @@ namespace Popcron.Settings
             CreateStaticConstructor(fileContents);
             fileContents.AppendLine();
 
+            CreateLoadMethod(fileContents);
+            fileContents.AppendLine();
+
             CreateSaveMethod(fileContents);
             fileContents.AppendLine();
 
             //add all properties to the builder
             for (int i = 0; i < settings.properties.Length; i++)
             {
-                ref Property property = ref settings.properties[i];
+                ref SettingsProperty property = ref settings.properties[i];
                 string propertyType = property.type;
                 string description = property.description;
                 bool isArray = propertyType.EndsWith("[]");
@@ -81,11 +92,13 @@ namespace Popcron.Settings
                     defaultValue = $"({propertyType})JsonConvert.DeserializeObject({json}, typeof({propertyType}))";
                 }
 
-                string fieldName = ToFieldName(property.name);
+                string propertyName = property.name.Replace(" ", "");
+                string fieldName = ToFieldName(propertyName);
                 string fieldString = fieldTemplate.Replace("{FieldName}", fieldName);
-                fieldString = fieldString.Replace("{PropertyName}", property.name);
+                fieldString = fieldString.Replace("{PropertyName}", propertyName);
                 fieldString = fieldString.Replace("{PropertyType}", propertyType);
                 fieldString = fieldString.Replace("{Instance}", InstanceName);
+                fieldString = fieldString.Replace("{InstanceType}", TypeName);
                 fieldString = fieldString.Replace("{DefaultValue}", defaultValue);
                 fileContents.Append(fieldString);
 
@@ -104,10 +117,13 @@ namespace Popcron.Settings
                 }
 
                 string propertyString = propertyTemplate.Replace("{FieldName}", fieldName);
-                propertyString = propertyString.Replace("{PropertyName}", property.name);
+                propertyString = propertyString.Replace("{PropertyName}", propertyName);
                 propertyString = propertyString.Replace("{PropertyType}", propertyType);
                 propertyString = propertyString.Replace("{Instance}", InstanceName);
+                propertyString = propertyString.Replace("{InstanceType}", TypeName);
                 propertyString = propertyString.Replace("{DefaultValue}", defaultValue);
+                propertyString = propertyString.Replace("{LoadMethod}", SaveMethodName);
+                propertyString = propertyString.Replace("{SaveMethod}", LoadMethodName);
                 fileContents.Append(propertyString);
 
                 if (i != settings.properties.Length - 1)
@@ -121,6 +137,23 @@ namespace Popcron.Settings
             fileContents.AppendLine("}");
             File.WriteAllText(settings.pathToClass, fileContents.ToString());
             AssetDatabase.Refresh();
+        }
+
+        private static bool NeedsGenericCollections(Settings settings)
+        {
+            for (int i = 0; i < settings.properties.Length; i++)
+            {
+                ref SettingsProperty property = ref settings.properties[i];
+                string propertyType = property.type;
+                string description = property.description;
+                bool isArray = propertyType.EndsWith("[]");
+                if (isArray)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -188,6 +221,17 @@ namespace Popcron.Settings
             fileContents.AppendLine("}");
         }
 
+        private static void CreateInstanceVariable(StringBuilder fileContents)
+        {
+            //insert the static instance variable
+            fileContents.Append(Indent);
+            fileContents.Append("private static ");
+            fileContents.Append(TypeName);
+            fileContents.Append(" ");
+            fileContents.Append(InstanceName);
+            fileContents.AppendLine(";");
+        }
+
         private static void CreateStaticConstructor(StringBuilder fileContents)
         {
             //constructor sig
@@ -203,7 +247,37 @@ namespace Popcron.Settings
             //default json object
             fileContents.Append(Indent);
             fileContents.Append(Indent);
-            fileContents.Append("current = new ");
+            fileContents.Append(LoadMethodName);
+            fileContents.AppendLine("();");
+
+            //save it
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(SaveMethodName);
+            fileContents.AppendLine("();");
+
+            //close method
+            fileContents.Append(Indent);
+            fileContents.AppendLine("}");
+        }
+
+        private static void CreateLoadMethod(StringBuilder fileContents)
+        {
+            //method sig
+            fileContents.Append(Indent);
+            fileContents.Append("private static void ");
+            fileContents.Append(LoadMethodName);
+            fileContents.AppendLine("()");
+
+            //open method
+            fileContents.Append(Indent);
+            fileContents.AppendLine("{");
+
+            //default json object
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(InstanceName);
+            fileContents.Append(" = new ");
             fileContents.Append(TypeName);
             fileContents.AppendLine("();");
             fileContents.AppendLine();
@@ -218,7 +292,20 @@ namespace Popcron.Settings
             fileContents.Append(Indent);
             fileContents.AppendLine("{");
 
+            //try statement
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("try");
+
+            //open try block
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("{");
+
             //load json data
+            fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.Append(Indent);
@@ -228,51 +315,79 @@ namespace Popcron.Settings
             fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.Append(Indent);
-            fileContents.Append("current = JsonUtility.FromJson<");
+            fileContents.Append(Indent);
+            fileContents.Append(InstanceName);
+            fileContents.Append(" = JsonUtility.FromJson<");
             fileContents.Append(TypeName);
             fileContents.AppendLine(">(json);");
+
+            //close try block
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("}");
+
+            //close try and open catch
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("catch { }");
 
             //close if statement
             fileContents.Append(Indent);
             fileContents.Append(Indent);
             fileContents.AppendLine("}");
 
-            //save json data
-            fileContents.AppendLine();
-            fileContents.Append(Indent);
-            fileContents.Append(Indent);
-            fileContents.AppendLine("Save();");
-
             //close method
             fileContents.Append(Indent);
             fileContents.AppendLine("}");
-        }
-
-        private static void CreateInstanceVariable(StringBuilder fileContents)
-        {
-            //insert the static instance variable
-            fileContents.Append(Indent);
-            fileContents.Append("private static ");
-            fileContents.Append(TypeName);
-            fileContents.Append(" ");
-            fileContents.Append(InstanceName);
-            fileContents.AppendLine(";");
         }
 
         private static void CreateSaveMethod(StringBuilder fileContents)
         {
             //method sig
             fileContents.Append(Indent);
-            fileContents.AppendLine("private static void Save()");
+            fileContents.Append("private static void ");
+            fileContents.Append(SaveMethodName);
+            fileContents.AppendLine("()");
 
             //open method
             fileContents.Append(Indent);
             fileContents.AppendLine("{");
+            
+            //check if null
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append("if (");
+            fileContents.Append(InstanceName);
+            fileContents.AppendLine(" is null)");
+
+            //open block
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("{");
+
+            //create new
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.Append(InstanceName);
+            fileContents.Append(" = new ");
+            fileContents.Append(TypeName);
+            fileContents.AppendLine("();");
+
+            //end block
+            fileContents.Append(Indent);
+            fileContents.Append(Indent);
+            fileContents.AppendLine("}");
+            fileContents.AppendLine();
 
             //get json data
             fileContents.Append(Indent);
             fileContents.Append(Indent);
-            fileContents.Append("string json = JsonUtility.ToJson(current, ");
+            fileContents.Append("string json = JsonUtility.ToJson(");
+            fileContents.Append(InstanceName);
+            fileContents.Append(", ");
             fileContents.Append(PrettyPrint ? "true" : "false");
             fileContents.AppendLine(");");
 

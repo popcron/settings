@@ -29,7 +29,7 @@ namespace Popcron.Settings
 
         public string pathToClass = "Assets/Settings.cs";
         public TextAsset classTemplate;
-        public Property[] properties = { };
+        public SettingsProperty[] properties = { };
 
         /// <summary>
         /// Returns an existing console settings asset, or creates a new one if none exist.
@@ -58,6 +58,7 @@ namespace Popcron.Settings
 
                 //make a file here
                 string path = $"Assets/Resources/{SettingsAssetName}";
+                settings.classTemplate = AssetDatabase.LoadAssetAtPath<TextAsset>("Packages/com.popcron.settings/Runtime/DefaultTemplate.txt");
                 AssetDatabase.CreateAsset(settings, path);
                 AssetDatabase.Refresh();
             }
@@ -68,7 +69,7 @@ namespace Popcron.Settings
     }
 
     [Serializable]
-    public class Property
+    public class SettingsProperty
     {
         public string name;
         public string description;
